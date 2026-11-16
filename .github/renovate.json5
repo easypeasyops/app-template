@@ -1,0 +1,26 @@
+// Renovate moves the platform pin, which Dependabot can't (dependabot.yaml has the rest):
+// the commit in platform.lock, the reusable workflows' SHAs in ci.yml and the platform
+// checkout in its deploy job are one dependency, so they move in one PR, weekly, to the
+// platform's main. CI on that PR is the proof this app works on the new platform commit.
+//
+// Only this regex manager runs: the pinned GitHub Actions keep one bumper (Dependabot).
+// Needs the Renovate GitHub App installed on the repo.
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: ["config:recommended", "schedule:weekly"],
+  enabledManagers: ["custom.regex"],
+  customManagers: [
+    {
+      customType: "regex",
+      managerFilePatterns: ["/^platform\\.lock$/", "/^\\.github/workflows/ci\\.yml$/"],
+      matchStrings: [
+        "easypeasyops/platform(?:/\\.github/workflows/[\\w.-]+)?@(?<currentDigest>[a-f0-9]{40})",
+        "ref: (?<currentDigest>[a-f0-9]{40}) # platform\\.lock",
+      ],
+      depNameTemplate: "easypeasyops/platform",
+      packageNameTemplate: "https://github.com/easypeasyops/platform",
+      datasourceTemplate: "git-refs",
+      currentValueTemplate: "main",
+    },
+  ],
+}

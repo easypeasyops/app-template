@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Docs-only PRs skip the work in every job (apps/python-template/scripts/ci-scope.sh).
+  # Docs-only PRs skip the work in every job (scripts/ci-scope.sh).
   scope:
     name: change scope
     runs-on: ubuntu-latest
@@ -29,13 +29,13 @@ jobs:
           fetch-depth: 2 # the PR merge commit and its first parent
       - name: Does this change need the checks?
         id: scope
-        run: apps/python-template/scripts/ci-scope.sh
+        run: scripts/ci-scope.sh
 
   # The platform's reusable workflows, pinned to platform.lock's commit (a test keeps them
   # equal; Renovate moves them together).
   check:
     needs: scope
-    uses: easypeasyops/platform/.github/workflows/reusable-python-check.yml@48ec77af2965c1592e50295a24bcad1de760d5d1 # platform.lock
+    uses: easypeasyops/platform/.github/workflows/reusable-python-check.yml@17b93724b50ca686e4b9810d0e736b2e571b3917 # platform.lock
     with:
       run: ${{ needs.scope.outputs.full == 'true' }}
       working-directory: apps/python-template
@@ -43,11 +43,26 @@ jobs:
 
   image:
     needs: scope
-    uses: easypeasyops/platform/.github/workflows/reusable-image.yml@48ec77af2965c1592e50295a24bcad1de760d5d1 # platform.lock
+    uses: easypeasyops/platform/.github/workflows/reusable-image.yml@17b93724b50ca686e4b9810d0e736b2e571b3917 # platform.lock
     with:
       run: ${{ needs.scope.outputs.full == 'true' }}
       context: apps/python-template
       smoke-command: apps/python-template/scripts/smoke.sh # reads $IMAGE
+
+  java-check:
+    needs: scope
+    uses: easypeasyops/platform/.github/workflows/reusable-java-check.yml@17b93724b50ca686e4b9810d0e736b2e571b3917 # platform.lock
+    with:
+      run: ${{ needs.scope.outputs.full == 'true' }}
+      working-directory: apps/java-template
+
+  java-image:
+    needs: scope
+    uses: easypeasyops/platform/.github/workflows/reusable-image.yml@17b93724b50ca686e4b9810d0e736b2e571b3917 # platform.lock
+    with:
+      run: ${{ needs.scope.outputs.full == 'true' }}
+      context: apps/java-template
+      smoke-command: apps/java-template/scripts/smoke.sh # reads $IMAGE
 
   # Each app's deploy values (apps/<app>/deploy/), rendered for each environment with the
   # platform's service chart as Argo CD will, and schema-checked. CHART is the latest service
@@ -76,7 +91,7 @@ jobs:
         if: needs.scope.outputs.full == 'true'
         with:
           repository: easypeasyops/platform
-          ref: 48ec77af2965c1592e50295a24bcad1de760d5d1 # platform.lock
+          ref: 17b93724b50ca686e4b9810d0e736b2e571b3917 # platform.lock
           path: platform
           persist-credentials: false
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
@@ -126,7 +141,7 @@ jobs:
   gate:
     name: ci
     if: always()
-    needs: [scope, check, image, deploy]
+    needs: [scope, check, image, java-check, java-image, deploy]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:

@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Docs-only PRs skip the work in every job (apps/app-template/scripts/ci-scope.sh).
+  # Docs-only PRs skip the work in every job (apps/python-template/scripts/ci-scope.sh).
   scope:
     name: change scope
     runs-on: ubuntu-latest
@@ -29,7 +29,7 @@ jobs:
           fetch-depth: 2 # the PR merge commit and its first parent
       - name: Does this change need the checks?
         id: scope
-        run: apps/app-template/scripts/ci-scope.sh
+        run: apps/python-template/scripts/ci-scope.sh
 
   # The platform's reusable workflows, pinned to platform.lock's commit (a test keeps them
   # equal; Renovate moves them together).
@@ -38,7 +38,7 @@ jobs:
     uses: easypeasyops/platform/.github/workflows/reusable-python-check.yml@48ec77af2965c1592e50295a24bcad1de760d5d1 # platform.lock
     with:
       run: ${{ needs.scope.outputs.full == 'true' }}
-      working-directory: apps/app-template
+      working-directory: apps/python-template
       typecheck-paths: app tests
 
   image:
@@ -46,8 +46,8 @@ jobs:
     uses: easypeasyops/platform/.github/workflows/reusable-image.yml@48ec77af2965c1592e50295a24bcad1de760d5d1 # platform.lock
     with:
       run: ${{ needs.scope.outputs.full == 'true' }}
-      context: apps/app-template
-      smoke-command: apps/app-template/scripts/smoke.sh # reads $IMAGE
+      context: apps/python-template
+      smoke-command: apps/python-template/scripts/smoke.sh # reads $IMAGE
 
   # Each app's deploy values (apps/<app>/deploy/), rendered for each environment with the
   # platform's service chart as Argo CD will, and schema-checked. CHART is the latest service

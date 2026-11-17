@@ -3,11 +3,11 @@
 # it: as UID 10001 on a read-only root filesystem. It answers the probes, serves metrics on
 # their own port and stops cleanly on SIGTERM.
 #
-#   IMAGE=app-template:dev scripts/smoke.sh
+#   IMAGE=python-template:dev scripts/smoke.sh
 set -euo pipefail
 
-IMAGE="${IMAGE:-app-template:dev}"
-NAME="app-template-smoke-$$"
+IMAGE="${IMAGE:-python-template:dev}"
+NAME="python-template-smoke-$$"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 pass() { echo "ok   $*"; }
 cleanup() {

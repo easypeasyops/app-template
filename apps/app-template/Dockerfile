@@ -30,6 +30,16 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # ---------------------------------------------------------------------------- runtime
 FROM python:3.15-slim-trixie@sha256:65a65fc7b30b06cb6df4930fd4650697cb23f4c2698ab81fc87e4b031bc36928 AS runtime
 
+# Debian's security fixes the base image doesn't carry yet (2026-11-16: zlib1g
+# CVE-2026-85091, HIGH, fixed in Debian but not in the newest python image, so the Trivy
+# gate failed). The layer is cached: when the scan names a Debian package (target
+# `debian`) whose fix the newest base doesn't have, move the date to today to re-run it.
+ARG APT_UPGRADED=2026-11-16
+RUN : "upgraded $APT_UPGRADED" \
+ && apt-get update \
+ && apt-get upgrade --yes \
+ && rm -rf /var/lib/apt/lists/*
+
 # Fixed, non-root UID/GID: predictable file ownership and Kubernetes `runAsNonRoot`.
 # The base image's pip, ensurepip's bundled wheels and Debian's apt go: nothing installs at
 # run time, so they are attack surface and scanner findings.

@@ -51,5 +51,5 @@ def test_ci_pins_the_platform_commit_in_platform_lock() -> None:
     pinned = re.findall(r"easypeasyops/platform/[\w./-]+@([0-9a-f]{40})", ci)
     pinned += re.findall(r"ref: ([0-9a-f]{40}) # platform\.lock", ci)
     assert len(locked) == 1
-    assert len(pinned) == 3
+    assert len(pinned) >= 3  # a check, an image and the deploy checkout, per template
     assert set(pinned) == set(locked)

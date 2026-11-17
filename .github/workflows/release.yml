@@ -5,8 +5,8 @@ name: Release
 # and admission policy accept only with this workflow's provenance at that app's tag. It
 # can't be one of the platform's reusable workflows: the signer named in the provenance
 # must be this repo's own .github/workflows/release.yml. Keep the file's name.
-# Cut one: bump `version` in apps/<app>/pyproject.toml (via PR), merge, then tag the merge
-# commit:
+# Cut one: bump the app's version (via PR), merge, then tag the merge commit. The version is
+# `version` in apps/<app>/pyproject.toml (Python) or apps/<app>/pom.xml (Java):
 #   git tag python-template/v0.1.0 <sha> && git push origin python-template/v0.1.0
 on:
   push:
@@ -34,18 +34,25 @@ jobs:
           persist-credentials: false
 
       # The tag names the app and its version. One source of truth for the version: a tag
-      # that disagrees with the app's pyproject.toml is a mistake (tagged the wrong commit,
-      # forgot the bump), so stop before publishing.
-      - name: Which app, and the tag must match its pyproject version
+      # that disagrees with the app's pyproject.toml or pom.xml is a mistake (tagged the
+      # wrong commit, forgot the bump), so stop before publishing.
+      - name: Which app, and the tag must match its version
         id: app
         run: |
           app="${GITHUB_REF_NAME%%/v*}" tag="${GITHUB_REF_NAME##*/v}"
           # An app name the admission policy accepts in a tag: lowercase, digits and dashes.
           [[ "$app" =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "::error::$app is not a valid app name"; exit 1; }
-          [[ -f "apps/$app/pyproject.toml" ]] || { echo "::error::no app apps/$app/ for tag $GITHUB_REF_NAME"; exit 1; }
-          version=$(python3 -c 'import sys, tomllib; print(tomllib.load(open(sys.argv[1], "rb"))["project"]["version"])' "apps/$app/pyproject.toml")
+          if [[ -f "apps/$app/pyproject.toml" ]]; then
+            manifest="apps/$app/pyproject.toml"
+            version=$(python3 -c 'import sys, tomllib; print(tomllib.load(open(sys.argv[1], "rb"))["project"]["version"])' "$manifest")
+          elif [[ -f "apps/$app/pom.xml" ]]; then
+            manifest="apps/$app/pom.xml"
+            version=$(python3 -c 'import sys, xml.etree.ElementTree as ET; print(ET.parse(sys.argv[1]).getroot().findtext("{http://maven.apache.org/POM/4.0.0}version"))' "$manifest")
+          else
+            echo "::error::no app apps/$app/ for tag $GITHUB_REF_NAME"; exit 1
+          fi
           if [[ "$tag" != "$version" ]]; then
-            echo "::error::tag $GITHUB_REF_NAME does not match apps/$app/pyproject.toml version $version"
+            echo "::error::tag $GITHUB_REF_NAME does not match $manifest version $version"
             exit 1
           fi
           echo "app=$app" >>"$GITHUB_OUTPUT"

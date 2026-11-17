@@ -1,6 +1,6 @@
-# app-template's values for the platform's service chart (easypeasyops/platform
+# python-template's values for the platform's service chart (easypeasyops/platform
 # charts/service), shared by every environment. Argo CD renders the app from that chart,
-# pinned by digest in the platform's apps/app-template/envs/<env>.yaml, with these values
+# pinned by digest in the platform's apps/python-template/envs/<env>.yaml, with these values
 # from this repo, layered as
 #   deploy/service/values.yaml             this file
 #   deploy/service/slo-rules.values.yaml   prod only: the SLO rules (generated)
@@ -10,12 +10,12 @@
 # workers, cron jobs, secret env, canary releases.
 
 app:
-  name: app-template
+  name: python-template
 
 image:
   # ghcr.io/easypeasyops/<repo>/<app>: the admission policy reads the repo and the app from
   # this name. Each environment names its release's digest (deploy/envs/).
-  repository: ghcr.io/easypeasyops/app-template/app-template
+  repository: ghcr.io/easypeasyops/app-template/python-template
 
 # Start small and fixed; size from a load test before turning the chart's autoscaling on.
 autoscaling:

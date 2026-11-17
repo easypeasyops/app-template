@@ -1,8 +1,8 @@
-# Service level objectives for app-template: the source of truth for its SLO rules.
+# Service level objectives for python-template: the source of truth for its SLO rules.
 #
 # The platform's scripts/gen_slo_rules.py turns this file into
 # deploy/service/slo-rules.values.yaml (committed, so reviewers see the real PromQL; CI
-# fails if the two drift apart). From apps/app-template, with a platform checkout at
+# fails if the two drift apart). From apps/python-template, with a platform checkout at
 # platform.lock's commit:
 #
 #   uv run --script <platform>/scripts/gen_slo_rules.py --spec deploy/prometheus/slos.yaml \
@@ -17,17 +17,17 @@ window: 30d # the generator's burn-rate factors assume a 30-day window
 runbook_url: https://github.com/easypeasyops/app-template/blob/main/README.md#slo-burn-rate-alerts
 
 slos:
-  - name: app-template-availability
+  - name: python-template-availability
     description: The app answers without a server error
     objective: 0.995 # budget: 0.5% of requests, about 3.6 hours of full outage in 30 days
     sli:
       type: availability
-      selector: 'job="app-template", route!~"/healthz|/readyz|unmatched"'
+      selector: 'job="python-template", route!~"/healthz|/readyz|unmatched"'
 
-  - name: app-template-latency
+  - name: python-template-latency
     description: The app answers in under 0.5 s
     objective: 0.99
     sli:
       type: latency
-      selector: 'job="app-template", route!~"/healthz|/readyz|unmatched"'
+      selector: 'job="python-template", route!~"/healthz|/readyz|unmatched"'
       threshold_seconds: 0.5 # must be a histogram bucket edge (app/main.py)

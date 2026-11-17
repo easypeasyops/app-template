@@ -1,5 +1,5 @@
 [project]
-name = "app-template"
+name = "python-template"
 version = "0.1.0"
 description = "A minimal service with everything the platform's app contract needs"
 requires-python = ">=3.15,<3.16"

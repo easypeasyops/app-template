@@ -35,7 +35,7 @@ jobs:
   # equal; Renovate moves them together).
   check:
     needs: scope
-    uses: easypeasyops/platform/.github/workflows/reusable-python-check.yml@708987de665b982f40a70e035d7e3575df6303e8 # platform.lock
+    uses: easypeasyops/platform/.github/workflows/reusable-python-check.yml@48ec77af2965c1592e50295a24bcad1de760d5d1 # platform.lock
     with:
       run: ${{ needs.scope.outputs.full == 'true' }}
       working-directory: apps/app-template
@@ -43,7 +43,7 @@ jobs:
 
   image:
     needs: scope
-    uses: easypeasyops/platform/.github/workflows/reusable-image.yml@708987de665b982f40a70e035d7e3575df6303e8 # platform.lock
+    uses: easypeasyops/platform/.github/workflows/reusable-image.yml@48ec77af2965c1592e50295a24bcad1de760d5d1 # platform.lock
     with:
       run: ${{ needs.scope.outputs.full == 'true' }}
       context: apps/app-template
@@ -76,7 +76,7 @@ jobs:
         if: needs.scope.outputs.full == 'true'
         with:
           repository: easypeasyops/platform
-          ref: 708987de665b982f40a70e035d7e3575df6303e8 # platform.lock
+          ref: 48ec77af2965c1592e50295a24bcad1de760d5d1 # platform.lock
           path: platform
           persist-credentials: false
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3

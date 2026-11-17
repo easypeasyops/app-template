@@ -21,7 +21,7 @@ pieces out of the existing apps.
 | `.github/workflows/ci.yml` | CI: the platform's reusable workflows (lint, types, tests; image build, scan, smoke test), the SLO rules checked against their spec, every environment rendered with the service chart and schema-checked | Workflows pinned by the platform's commit SHA; `ci` is the one required check |
 | `.github/workflows/release.yml` | An `<app>/vX.Y.Z` tag builds, scans, pushes and attests the image | The provenance's signer must be this repo's own `release.yml`, at the app's tag: don't rename or move it |
 | `platform.lock` | The platform commit CI runs against | The same SHA as in `ci.yml` (a test checks) |
-| `.github/renovate.json5`, `.github/dependabot.yaml` | Keep the pins current | Renovate: the platform commit. Dependabot: actions, Python dependencies, base images |
+| `.github/renovate.json5`, `.github/dependabot.yaml` | Keep the pins current | Renovate: the platform commit, and the service chart `ci.yml` renders with (`CHART:`, auto-merged for a minor or patch). Dependabot: actions, Python dependencies, base images |
 
 ## Start an app from it
 

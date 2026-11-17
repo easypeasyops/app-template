@@ -14,6 +14,10 @@
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: ["config:recommended", "schedule:weekly"],
   enabledManagers: ["custom.regex"],
+  // Renovate merges its own PRs once every check on them is green, instead of turning on
+  // GitHub's auto-merge: with no required check on main, GitHub would merge at once, before
+  // CI has run. A repo made from this one that requires `ci` (README, step 3) can drop this.
+  platformAutomerge: false,
   customManagers: [
     {
       customType: "regex",

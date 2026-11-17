@@ -51,7 +51,8 @@ pass "metrics on :9100"
 docker stop -t 25 "$NAME" >/dev/null
 code=$(docker inspect -f '{{.State.ExitCode}}' "$NAME")
 [[ "$code" == 143 ]] || fail "exited $code on SIGTERM (want 143)"
-docker logs "$NAME" 2>&1 | grep -q "Graceful shutdown complete" || fail "no graceful shutdown in the logs"
+logs=$(docker logs "$NAME" 2>&1) # captured: grep -q would SIGPIPE docker logs
+grep -q "Graceful shutdown complete" <<<"$logs" || fail "no graceful shutdown in the logs"
 pass "clean exit on SIGTERM"
 
 echo "smoke test passed"

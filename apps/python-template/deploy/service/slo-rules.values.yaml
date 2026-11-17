@@ -73,7 +73,7 @@ monitoring:
           expr: 1 - slo:sli_error:ratio_rate30d{slo="python-template-availability"} / 0.005
           labels:
             slo: python-template-availability
-        - alert: AppTemplateAvailabilityBudgetBurn
+        - alert: PythonTemplateAvailabilityBudgetBurn
           expr: |-
             (slo:sli_error:ratio_rate1h{slo="python-template-availability"} > 0.072 and slo:sli_error:ratio_rate5m{slo="python-template-availability"} > 0.072 and slo:sli_error:ratio_rate1h{slo="python-template-availability"} * slo:sli_events:increase1h{slo="python-template-availability"} >= 5)
             or (slo:sli_error:ratio_rate6h{slo="python-template-availability"} > 0.03 and slo:sli_error:ratio_rate30m{slo="python-template-availability"} > 0.03 and slo:sli_error:ratio_rate6h{slo="python-template-availability"} * slo:sli_events:increase6h{slo="python-template-availability"} >= 5)
@@ -85,7 +85,7 @@ monitoring:
             summary: 'python-template-availability: error budget burning fast (14.4x over 1h or 6x over 6h)'
             description: 'The app answers without a server error: objective 0.995 over 30 days. At this pace the whole budget lasts only 2 to 5 days.'
             runbook_url: https://github.com/easypeasyops/app-template/blob/main/README.md#slo-burn-rate-alerts
-        - alert: AppTemplateAvailabilityBudgetBurn
+        - alert: PythonTemplateAvailabilityBudgetBurn
           expr: |-
             (slo:sli_error:ratio_rate1d{slo="python-template-availability"} > 0.015 and slo:sli_error:ratio_rate2h{slo="python-template-availability"} > 0.015 and slo:sli_error:ratio_rate1d{slo="python-template-availability"} * slo:sli_events:increase1d{slo="python-template-availability"} >= 5)
             or (slo:sli_error:ratio_rate3d{slo="python-template-availability"} > 0.005 and slo:sli_error:ratio_rate6h{slo="python-template-availability"} > 0.005 and slo:sli_error:ratio_rate3d{slo="python-template-availability"} * slo:sli_events:increase3d{slo="python-template-availability"} >= 5)
@@ -163,7 +163,7 @@ monitoring:
           expr: 1 - slo:sli_error:ratio_rate30d{slo="python-template-latency"} / 0.01
           labels:
             slo: python-template-latency
-        - alert: AppTemplateLatencyBudgetBurn
+        - alert: PythonTemplateLatencyBudgetBurn
           expr: |-
             (slo:sli_error:ratio_rate1h{slo="python-template-latency"} > 0.144 and slo:sli_error:ratio_rate5m{slo="python-template-latency"} > 0.144 and slo:sli_error:ratio_rate1h{slo="python-template-latency"} * slo:sli_events:increase1h{slo="python-template-latency"} >= 5)
             or (slo:sli_error:ratio_rate6h{slo="python-template-latency"} > 0.06 and slo:sli_error:ratio_rate30m{slo="python-template-latency"} > 0.06 and slo:sli_error:ratio_rate6h{slo="python-template-latency"} * slo:sli_events:increase6h{slo="python-template-latency"} >= 5)
@@ -175,7 +175,7 @@ monitoring:
             summary: 'python-template-latency: error budget burning fast (14.4x over 1h or 6x over 6h)'
             description: 'The app answers in under 0.5 s: objective 0.99 over 30 days. At this pace the whole budget lasts only 2 to 5 days.'
             runbook_url: https://github.com/easypeasyops/app-template/blob/main/README.md#slo-burn-rate-alerts
-        - alert: AppTemplateLatencyBudgetBurn
+        - alert: PythonTemplateLatencyBudgetBurn
           expr: |-
             (slo:sli_error:ratio_rate1d{slo="python-template-latency"} > 0.03 and slo:sli_error:ratio_rate2h{slo="python-template-latency"} > 0.03 and slo:sli_error:ratio_rate1d{slo="python-template-latency"} * slo:sli_events:increase1d{slo="python-template-latency"} >= 5)
             or (slo:sli_error:ratio_rate3d{slo="python-template-latency"} > 0.01 and slo:sli_error:ratio_rate6h{slo="python-template-latency"} > 0.01 and slo:sli_error:ratio_rate3d{slo="python-template-latency"} * slo:sli_events:increase3d{slo="python-template-latency"} >= 5)

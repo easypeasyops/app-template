@@ -23,6 +23,15 @@ updates:
         patterns: ["*"]
         update-types: [minor, patch]
 
+  - package-ecosystem: cargo
+    directories: [/apps/rust-template]
+    schedule:
+      interval: weekly
+    groups:
+      rust-deps:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
   - package-ecosystem: github-actions # bumps the pinned SHAs (and their # vX comments)
     directory: /
     schedule:

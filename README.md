@@ -11,8 +11,9 @@ pieces out of the existing apps.
 | --- | --- | --- |
 | `apps/python-template/` | Starlette, uvicorn, prometheus_client; uv | the platform's `reusable-python-check.yml` (ruff, mypy, pytest) |
 | `apps/java-template/` | Spring Boot 4 on Java 21, Micrometer; Maven wrapper | the platform's `reusable-java-check.yml` (`./mvnw verify`: Spotless, `-Werror`, JUnit, JaCoCo) |
+| `apps/rust-template/` | axum on tokio, prometheus-client; Cargo, `rust-toolchain.toml` | the platform's `reusable-rust-check.yml` (rustfmt, clippy `-D warnings`, tests, cargo-llvm-cov) |
 
-The contract is the same for both, so is everything outside the code: the image's
+The contract is the same for all of them, so is everything outside the code: the image's
 behaviour, the deploy values, the SLO spec, the release. A template's folder name is its
 app's name, the one placeholder in it; `app-template` is this repo's name.
 
@@ -28,16 +29,17 @@ app's name, the one placeholder in it; `app-template` is this repo's name.
 | `.github/workflows/ci.yml` | CI: the platform's reusable workflows (lint, types, tests; image build, scan, smoke test), the SLO rules checked against their spec, every environment rendered with the service chart and schema-checked | Workflows pinned by the platform's commit SHA; `ci` is the one required check |
 | `.github/workflows/release.yml` | An `<app>/vX.Y.Z` tag builds, scans, pushes and attests the image | The provenance's signer must be this repo's own `release.yml`, at the app's tag: don't rename or move it |
 | `platform.lock` | The platform commit CI runs against | The same SHA as in `ci.yml` (a test checks) |
-| `.github/renovate.json5`, `.github/dependabot.yaml` | Keep the pins current | Renovate: the platform commit, and the service chart `ci.yml` renders with (`CHART:`, auto-merged for a minor or patch). Dependabot: actions, Python and Maven dependencies, base images |
+| `.github/renovate.json5`, `.github/dependabot.yaml` | Keep the pins current | Renovate: the platform commit, and the service chart `ci.yml` renders with (`CHART:`, auto-merged for a minor or patch). Dependabot: actions, Python, Maven and Cargo dependencies, base images |
 
 ## Start an app from it
 
 1. Create the repo: `gh repo create easypeasyops/<app> --public --template easypeasyops/app-template --clone`.
-2. Keep one template: delete the other's folder, its jobs in `.github/workflows/ci.yml`
-   (`check` and `image` are Python's, `java-check` and `java-image` Java's; take them out of
-   the `ci` gate's `needs` too) and its entry in `.github/dependabot.yaml`.
-3. Rename, from the repo's root, with `t` the template you kept (`python-template` or
-   `java-template`):
+2. Keep one template: delete the others' folders, their jobs in `.github/workflows/ci.yml`
+   (`check` and `image` are Python's, `java-check` and `java-image` Java's, `rust-check` and
+   `rust-image` Rust's; take them out of the `ci` gate's `needs` too) and their entries in
+   `.github/dependabot.yaml`.
+3. Rename, from the repo's root, with `t` the template you kept (`python-template`,
+   `java-template` or `rust-template`):
 
    ```bash
    t=python-template
@@ -52,8 +54,8 @@ app's name, the one placeholder in it; `app-template` is this repo's name.
    letters, digits and dashes. In a repo that holds several apps the image is
    `ghcr.io/easypeasyops/<repo>/<app>`: fix `image.repository` by hand.
 4. On GitHub: make `ci` a required check on `main`, and add the repo to the Renovate app.
-5. Release it: tag the commit `<app>/v0.1.0` (the version in `apps/<app>/pyproject.toml`
-   or `apps/<app>/pom.xml`)
+5. Release it: tag the commit `<app>/v0.1.0` (the version in `apps/<app>/pyproject.toml`,
+   `apps/<app>/pom.xml` or `apps/<app>/Cargo.toml`)
    and push the tag. The release's notes hold the image's digest: set it as `image.digest`
    in `deploy/envs/staging.yaml`.
 6. In the platform repo, add `apps/<app>/` (its README, "Onboarding an app"). Argo CD then
@@ -93,6 +95,20 @@ docker build -t java-template:dev . && scripts/smoke.sh
 The Java service counts requests in its own filter (`RequestMetrics.java`): Spring's
 `http_server_requests_seconds` is not a name the platform reads. A JVM needs more memory
 than a Python process, so its values start at 256Mi requested, 384Mi limit.
+
+From `apps/rust-template` (rustup; `rust-toolchain.toml` pins the compiler, rustup installs
+it on the first `cargo` call):
+
+```bash
+cargo fmt --all && cargo clippy --all-targets -- -D warnings
+cargo llvm-cov --ignore-filename-regex 'src/main\.rs$'   # tests, with coverage: what CI runs
+docker build -t rust-template:dev . && scripts/smoke.sh
+```
+
+The Rust service counts requests in its own middleware (`track` in `src/lib.rs`), labelled
+by axum's matched route pattern. `src/main.rs` only binds the ports and handles SIGTERM:
+coverage leaves it out, and the smoke test proves it. The image is one binary on
+distroless `cc`, so its values start at 32Mi requested, 64Mi limit.
 
 ## SLO burn-rate alerts
 

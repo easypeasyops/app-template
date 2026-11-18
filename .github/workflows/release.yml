@@ -6,7 +6,8 @@ name: Release
 # can't be one of the platform's reusable workflows: the signer named in the provenance
 # must be this repo's own .github/workflows/release.yml. Keep the file's name.
 # Cut one: bump the app's version (via PR), merge, then tag the merge commit. The version is
-# `version` in apps/<app>/pyproject.toml (Python) or apps/<app>/pom.xml (Java):
+# `version` in apps/<app>/pyproject.toml (Python), apps/<app>/pom.xml (Java) or
+# apps/<app>/Cargo.toml (Rust):
 #   git tag <app>/v0.1.0 <sha> && git push origin <app>/v0.1.0
 on:
   push:
@@ -34,7 +35,7 @@ jobs:
           persist-credentials: false
 
       # The tag names the app and its version. One source of truth for the version: a tag
-      # that disagrees with the app's pyproject.toml or pom.xml is a mistake (tagged the
+      # that disagrees with the app's pyproject.toml, pom.xml or Cargo.toml is a mistake (tagged the
       # wrong commit, forgot the bump), so stop before publishing.
       - name: Which app, and the tag must match its version
         id: app
@@ -48,6 +49,9 @@ jobs:
           elif [[ -f "apps/$app/pom.xml" ]]; then
             manifest="apps/$app/pom.xml"
             version=$(python3 -c 'import sys, xml.etree.ElementTree as ET; print(ET.parse(sys.argv[1]).getroot().findtext("{http://maven.apache.org/POM/4.0.0}version"))' "$manifest")
+          elif [[ -f "apps/$app/Cargo.toml" ]]; then
+            manifest="apps/$app/Cargo.toml"
+            version=$(python3 -c 'import sys, tomllib; print(tomllib.load(open(sys.argv[1], "rb"))["package"]["version"])' "$manifest")
           else
             echo "::error::no app apps/$app/ for tag $GITHUB_REF_NAME"; exit 1
           fi

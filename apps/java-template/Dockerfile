@@ -10,7 +10,7 @@
 
 # ---------------------------------------------------------------------------- builder
 # The jar is the same on every architecture: build it natively, not under QEMU.
-FROM --platform=$BUILDPLATFORM eclipse-temurin:21-jdk-noble@sha256:06c1f157dacf6b68198bd9a4186dd4c34ef24e65d7bbbe2a0cf8e62571ad38c9 AS builder
+FROM --platform=$BUILDPLATFORM eclipse-temurin:25-jdk-noble@sha256:80f67fb3d6f76e2d817d98a4cc2a9cf05f054d4e6adc5e2144bde671d722e63f AS builder
 
 # mvnw needs unzip to unpack the Maven it pins (and checks by checksum). Builder only.
 RUN apt-get update \

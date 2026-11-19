@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch: # e.g. the kind e2e on a branch (the e2e jobs below)
 
 # Least privilege: the default GITHUB_TOKEN can write to the repo; CI only needs to read.
 permissions:
@@ -20,8 +21,25 @@ jobs:
     name: change scope
     runs-on: ubuntu-latest
     timeout-minutes: 2
+    # CHART is the latest service chart release, which the deploy and e2e jobs render with:
+    # Renovate moves it (.github/renovate.json5), keep version and digest together. Here, to
+    # be one line: a reusable workflow's inputs can't read another job's env, only outputs.
+    env:
+      CHART: oci://ghcr.io/easypeasyops/charts/service@sha256:11a7ca25f34cd7a16bf2fbd4a5ad86e3bbc556f19f9ab236e1c2b05f50fb6a7f # 1.7.1
     outputs:
       full: ${{ steps.scope.outputs.full }}
+      chart: ${{ env.CHART }}
+      # The e2e jobs (<lang>-e2e): each app deployed on a kind cluster with the platform at
+      # platform.lock's commit and the chart CHART pins, with its staging values, then
+      # checked: workloads Ready, the front door on each hostname, metrics targets up,
+      # PrometheusRules loaded (the platform's reusable-kind-e2e.yml). About 15 minutes, so
+      # only where the platform or the chart moves: Renovate's lock and chart PRs (renovate/
+      # branches), and a manual run (Actions, CI, Run workflow). Other PRs and pushes to main
+      # skip it, which still reports success.
+      e2e: >-
+        ${{ steps.scope.outputs.full == 'true' && (github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'pull_request' && startsWith(github.head_ref, 'renovate/'))) }}
+      onboarded: ${{ steps.onboarded.outputs.apps }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -32,6 +50,21 @@ jobs:
         run: scripts/ci-scope.sh
       - name: platform.lock and ci.yml name the same platform commit
         run: scripts/check-platform-lock.sh
+      # The e2e deploys an app with the values files its platform env file lists, or, for an
+      # app the platform doesn't run yet (the templates), with the ones its job names: which
+      # apps the platform at platform.lock's commit runs in staging, as a JSON list.
+      - name: Apps the locked platform runs in staging
+        id: onboarded
+        run: |
+          sha=$(sed -nE 's/^easypeasyops\/platform@([0-9a-f]{40})$/\1/p' platform.lock)
+          apps=()
+          for d in apps/*/; do
+            app=$(basename "$d")
+            if curl -sfo /dev/null "https://raw.githubusercontent.com/easypeasyops/platform/$sha/apps/$app/envs/staging.yaml"; then
+              apps+=("$app")
+            fi
+          done
+          echo "apps=$(jq -cn '$ARGS.positional' --args "${apps[@]}")" | tee -a "$GITHUB_OUTPUT"
 
   # The platform's reusable workflows, pinned to platform.lock's commit
   # (scripts/check-platform-lock.sh keeps them equal; Renovate moves them together).
@@ -82,15 +115,15 @@ jobs:
       smoke-command: apps/rust-template/scripts/smoke.sh # reads $IMAGE
 
   # Each app's deploy values (apps/<app>/deploy/), rendered for each environment with the
-  # platform's service chart as Argo CD will, and schema-checked. CHART is the latest service
-  # chart release: Renovate moves it (.github/renovate.json5), keep version and digest together.
+  # platform's service chart as Argo CD will, and schema-checked, with the chart release the
+  # scope job names (CHART).
   deploy:
     name: deploy values
     needs: scope
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      CHART: oci://ghcr.io/easypeasyops/charts/service@sha256:11a7ca25f34cd7a16bf2fbd4a5ad86e3bbc556f19f9ab236e1c2b05f50fb6a7f # 1.7.1
+      CHART: ${{ needs.scope.outputs.chart }}
       CRDS: https://raw.githubusercontent.com/datreeio/CRDs-catalog/501527ab9c40c827144c8f45945b25a023e344ce
       KUBECONFORM: ghcr.io/yannh/kubeconform:v0.8.0
     steps:
@@ -153,12 +186,51 @@ jobs:
             -schema-location "$CRDS/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json" \
             .
 
+  e2e:
+    needs: scope
+    uses: easypeasyops/platform/.github/workflows/reusable-kind-e2e.yml@09bba2af880d8f2d21ed10bd7bcf62d0784bb30d # platform.lock
+    with:
+      run: ${{ needs.scope.outputs.e2e == 'true' }}
+      app: python-template
+      env: staging
+      context: apps/python-template
+      chart: ${{ needs.scope.outputs.chart }}
+      values-files: >-
+        ${{ !contains(fromJSON(needs.scope.outputs.onboarded), 'python-template') &&
+        'apps/python-template/deploy/service/values.yaml apps/python-template/deploy/envs/staging.yaml' || '' }}
+
+  java-e2e:
+    needs: scope
+    uses: easypeasyops/platform/.github/workflows/reusable-kind-e2e.yml@09bba2af880d8f2d21ed10bd7bcf62d0784bb30d # platform.lock
+    with:
+      run: ${{ needs.scope.outputs.e2e == 'true' }}
+      app: java-template
+      env: staging
+      context: apps/java-template
+      chart: ${{ needs.scope.outputs.chart }}
+      values-files: >-
+        ${{ !contains(fromJSON(needs.scope.outputs.onboarded), 'java-template') &&
+        'apps/java-template/deploy/service/values.yaml apps/java-template/deploy/envs/staging.yaml' || '' }}
+
+  rust-e2e:
+    needs: scope
+    uses: easypeasyops/platform/.github/workflows/reusable-kind-e2e.yml@09bba2af880d8f2d21ed10bd7bcf62d0784bb30d # platform.lock
+    with:
+      run: ${{ needs.scope.outputs.e2e == 'true' }}
+      app: rust-template
+      env: staging
+      context: apps/rust-template
+      chart: ${{ needs.scope.outputs.chart }}
+      values-files: >-
+        ${{ !contains(fromJSON(needs.scope.outputs.onboarded), 'rust-template') &&
+        'apps/rust-template/deploy/service/values.yaml apps/rust-template/deploy/envs/staging.yaml' || '' }}
+
   # The one required check: green only when every job above passed (or was skipped as
   # docs-only by its own input, which still reports success).
   gate:
     name: ci
     if: always()
-    needs: [scope, check, image, java-check, java-image, rust-check, rust-image, deploy]
+    needs: [scope, check, image, e2e, java-check, java-image, java-e2e, rust-check, rust-image, rust-e2e, deploy]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:

@@ -1,7 +1,8 @@
 // Renovate moves the platform pin, which Dependabot can't (dependabot.yaml has the rest):
 // the commit in platform.lock, the reusable workflows' SHAs in ci.yml and the platform
 // checkout in its deploy job are one dependency, so they move in one PR, weekly, to the
-// platform's main. CI on that PR is the proof this app works on the new platform commit.
+// platform's main. CI on that PR is the proof this app works on the new platform commit:
+// it auto-merges once CI is green.
 //
 // The service chart CI renders the deploy values with (CHART: in ci.yml) follows the chart's
 // releases on GHCR, version and digest together, checked whenever Renovate runs. A minor or
@@ -42,6 +43,12 @@
     },
   ],
   packageRules: [
+    {
+      matchDepNames: ["easypeasyops/platform"],
+      commitMessageTopic: "platform.lock",
+      automerge: true,
+      automergeStrategy: "squash",
+    },
     {
       matchDepNames: ["ghcr.io/easypeasyops/charts/service"],
       schedule: ["at any time"],

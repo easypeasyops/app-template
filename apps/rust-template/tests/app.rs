@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use app::{Metrics, metrics_router, router, serve};
+use app::{Metrics, log, metrics_router, router, serve};
 use axum::Router;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
@@ -87,4 +87,54 @@ async fn serves_both_ports_until_shutdown() {
 
     stop.send(()).unwrap();
     server.await.unwrap().unwrap();
+}
+
+async fn get_with_id(router: &Router, id: Option<&str>) -> Option<String> {
+    let mut request = Request::get("/");
+    if let Some(id) = id {
+        request = request.header("X-Request-ID", id);
+    }
+    let response = router
+        .clone()
+        .oneshot(request.body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    let id = response.headers().get("x-request-id")?;
+    Some(id.to_str().unwrap().to_owned())
+}
+
+#[tokio::test]
+async fn a_request_id_is_sent_back_kept_from_the_caller_or_made() {
+    let router = router(Arc::default());
+    assert_eq!(
+        get_with_id(&router, Some("abc-123")).await.as_deref(),
+        Some("abc-123")
+    );
+    let made = get_with_id(&router, None).await.unwrap();
+    assert!(made.len() == 32 && made.bytes().all(|b| b.is_ascii_hexdigit()));
+    let replaced = get_with_id(&router, Some("bad id!")).await.unwrap();
+    assert_ne!(replaced, "bad id!");
+    assert_eq!(replaced.len(), 32);
+}
+
+#[tokio::test]
+async fn log_lines_are_json_with_the_request_id_while_it_is_served() {
+    let mut fields = serde_json::Map::new();
+    fields.insert("status".into(), 200.into());
+    let line = app::log::REQUEST_ID
+        .scope("trace-me".into(), async {
+            log::line("info", "app.access", "request", fields)
+        })
+        .await;
+    let entry: serde_json::Value = serde_json::from_str(&line).unwrap();
+    assert_eq!(entry["request_id"], "trace-me");
+    assert_eq!(entry["msg"], "request");
+    assert_eq!(entry["level"], "info");
+    assert_eq!(entry["logger"], "app.access");
+    assert_eq!(entry["status"], 200);
+    assert!(entry["ts"].as_str().unwrap().ends_with('Z'));
+
+    let outside: serde_json::Value =
+        serde_json::from_str(&log::line("info", "app", "started", serde_json::Map::new())).unwrap();
+    assert!(outside.get("request_id").is_none());
 }

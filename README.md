@@ -21,7 +21,7 @@ app's name, the one placeholder in it; `app-template` is this repo's name.
 
 | Path | What | The contract |
 | --- | --- | --- |
-| `apps/<template>/app/`, `apps/<template>/src/` | The service: `/`, the probes, request metrics | `/healthz` and `/readyz` on port 8000; `/metrics` on 9100 with `http_requests_total` and `http_request_duration_seconds`, labelled `method`, `route`, `status` |
+| `apps/<template>/app/`, `apps/<template>/src/` | The service: `/`, the probes, request metrics, logs | `/healthz` and `/readyz` on port 8000; `/metrics` on 9100 with `http_requests_total` and `http_request_duration_seconds`, labelled `method`, `route`, `status`. Logs are JSON lines on stdout (`ts`, `level`, `logger`, `msg`, more keys as fields); a request keeps the `X-Request-ID` it came with (else gets one), sends it back, and every line logged while it is served carries it as `request_id`, so the platform's log search finds a request's lines with `request_id:="<id>"` |
 | `apps/<template>/Dockerfile` | The image | Runs as UID 10001, writes nothing outside `/tmp` (the chart mounts the root read-only and an emptyDir on `/tmp`), stops on SIGTERM. `scripts/smoke.sh` proves it |
 | `apps/<template>/deploy/service/values.yaml` | The app's values for the platform's service chart | Its name and `image.repository: ghcr.io/easypeasyops/<repo>/<app>` |
 | `apps/<template>/deploy/envs/<env>.yaml` | Each environment's settings and the release it runs (`image.digest`) | One file per environment; the namespace is `<app>-<env>` |
@@ -113,7 +113,8 @@ docker build -t rust-template:dev . && scripts/smoke.sh
 ```
 
 The Rust service counts requests in its own middleware (`track` in `src/lib.rs`), labelled
-by axum's matched route pattern. `src/main.rs` only binds the ports and handles SIGTERM:
+by axum's matched route pattern, and logs through `src/log.rs`, a few lines of JSON on
+stdout (a bigger app moves to `tracing` with a JSON subscriber, keeping the keys). `src/main.rs` only binds the ports and handles SIGTERM:
 coverage leaves it out, and the smoke test proves it. The image is one binary on
 distroless `cc`, so its values start at 32Mi requested, 64Mi limit.
 

@@ -9,20 +9,45 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Set;
+import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.stream.DoubleStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.slf4j.event.Level;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerMapping;
 
 /**
- * Counts and times every request on the app's port as {@code http_requests_total} and {@code
+ * For every request on the app's port: its ID (the incoming {@code X-Request-ID}, which the
+ * platform's front door sets, else a new one), sent back in the response's {@code X-Request-ID} and
+ * put on every log line logged while it is served ({@code request_id}, through the MDC:
+ * JsonLogFormatter); then one access log line.
+ *
+ * <p>It also counts and times each request as {@code http_requests_total} and {@code
  * http_request_duration_seconds}, the names the platform reads (Spring's own {@code
  * http_server_requests_seconds} is not one of them). Labelled by route, never by raw path: one
  * series per ID or per scanner's guess would grow without bound. A route with a path variable is
  * labelled by its pattern ({@code /items/{id}}), a path no route matches as {@code unmatched}.
  */
 @Component
-class RequestMetrics extends OncePerRequestFilter {
+class RequestContext extends OncePerRequestFilter {
+  static final String REQUEST_ID_HEADER = "X-Request-ID";
+
+  /**
+   * A caller's request ID is kept only if it's short and plain: anything else could inject log
+   * lines or bloat log storage, so a new one replaces it.
+   */
+  private static final Pattern VALID_REQUEST_ID = Pattern.compile("[A-Za-z0-9._-]{1,64}");
+
+  /** Probes are frequent and uninteresting: logged at DEBUG, not INFO. */
+  private static final Set<String> QUIET_PATHS = Set.of("/healthz", "/readyz");
+
+  private static final Logger ACCESS_LOG = LoggerFactory.getLogger("app.access");
+
   /**
    * The buckets Python's prometheus_client uses, so every app's histograms line up. An SLO's
    * latency threshold must be one of them (deploy/prometheus/slos.yaml).
@@ -34,7 +59,7 @@ class RequestMetrics extends OncePerRequestFilter {
 
   private final MeterRegistry registry;
 
-  RequestMetrics(MeterRegistry registry) {
+  RequestContext(MeterRegistry registry) {
     this.registry = registry;
   }
 
@@ -42,6 +67,13 @@ class RequestMetrics extends OncePerRequestFilter {
   protected void doFilterInternal(
       HttpServletRequest request, HttpServletResponse response, FilterChain chain)
       throws ServletException, IOException {
+    String incoming = request.getHeader(REQUEST_ID_HEADER);
+    String requestId =
+        incoming != null && VALID_REQUEST_ID.matcher(incoming).matches()
+            ? incoming
+            : UUID.randomUUID().toString().replace("-", "");
+    MDC.put("request_id", requestId);
+    response.setHeader(REQUEST_ID_HEADER, requestId);
     long start = System.nanoTime();
     // What the client sees if the app throws: the container answers 500 after this filter.
     boolean threw = true;
@@ -64,6 +96,14 @@ class RequestMetrics extends OncePerRequestFilter {
           .serviceLevelObjectives(BUCKETS)
           .register(registry)
           .record(Duration.ofNanos(System.nanoTime() - start));
+      ACCESS_LOG
+          .atLevel(QUIET_PATHS.contains(request.getRequestURI()) ? Level.DEBUG : Level.INFO)
+          .addKeyValue("method", method)
+          .addKeyValue("route", route)
+          .addKeyValue("status", Integer.parseInt(status))
+          .addKeyValue("duration_ms", Math.round((System.nanoTime() - start) / 1e4) / 100.0)
+          .log("request");
+      MDC.remove("request_id");
     }
   }
 }

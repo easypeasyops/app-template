@@ -97,7 +97,7 @@ From `apps/java-template` (JDK 21; the wrapper fetches the Maven it pins):
 docker build -t java-template:dev . && scripts/smoke.sh
 ```
 
-The Java service counts requests in its own filter (`RequestMetrics.java`): Spring's
+The Java service counts requests in its own filter (`RequestContext.java`): Spring's
 `http_server_requests_seconds` is not a name the platform reads. A JVM needs more memory
 than a Python process, so its values start at 256Mi requested, 384Mi limit.
 

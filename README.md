@@ -74,8 +74,10 @@ What the app still decides:
   its alerts link to.
 - **Its environment**: the `env` list in `values.yaml`; keys that can't be in git come from
   a store the platform holds for the app (`secretEnv`).
-- What else it needs from the chart: a database, Redis, workers, cron jobs, autoscaling,
-  canary releases. The chart's
+- **Canary releases**: the `canary` block in `values.yaml`, off; turn it on per environment
+  (its comment says how, and what it costs each release).
+- What else it needs from the chart: a database (links' shortly has one), Redis, workers,
+  cron jobs, autoscaling. The chart's
   [values.yaml](https://github.com/easypeasyops/platform/blob/main/charts/service/values.yaml)
   documents each.
 

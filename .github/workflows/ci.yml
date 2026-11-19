@@ -30,9 +30,11 @@ jobs:
       - name: Does this change need the checks?
         id: scope
         run: scripts/ci-scope.sh
+      - name: platform.lock and ci.yml name the same platform commit
+        run: scripts/check-platform-lock.sh
 
-  # The platform's reusable workflows, pinned to platform.lock's commit (a test keeps them
-  # equal; Renovate moves them together).
+  # The platform's reusable workflows, pinned to platform.lock's commit
+  # (scripts/check-platform-lock.sh keeps them equal; Renovate moves them together).
   check:
     needs: scope
     uses: easypeasyops/platform/.github/workflows/reusable-python-check.yml@09bba2af880d8f2d21ed10bd7bcf62d0784bb30d # platform.lock

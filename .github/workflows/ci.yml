@@ -10,9 +10,10 @@ on:
 permissions:
   contents: read
 
-# A new push to the same PR/branch cancels the now-stale run.
+# A new push to the same PR/branch cancels the now-stale run. A manual run (the kind e2e) has
+# a group of its own: a merge to main mustn't cancel it.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:

@@ -33,6 +33,11 @@ app's name, the one placeholder in it; `app-template` is this repo's name.
 
 ## Start an app from it
 
+The platform's
+[scripts/new-app.py](https://github.com/easypeasyops/platform/blob/main/scripts/new-app.py)
+runs these steps, and the platform side, for any of the templates
+(`create <app> --lang python|java|rust`, then `staging` and `prod`). By hand:
+
 1. Create the repo: `gh repo create easypeasyops/<app> --public --template easypeasyops/app-template --clone`.
 2. Keep one template: delete the others' folders, their jobs in `.github/workflows/ci.yml`
    (`check` and `image` are Python's, `java-check` and `java-image` Java's, `rust-check` and

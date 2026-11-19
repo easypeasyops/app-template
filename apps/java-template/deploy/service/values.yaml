@@ -42,3 +42,33 @@ monitoring:
   # The platform's SLO dashboard comes with the SLO rules; its Runbook link.
   sloDashboard:
     runbookUrl: https://github.com/easypeasyops/app-template/blob/main/README.md#slo-burn-rate-alerts
+
+# Canary releases (the chart's `canary`; links' docs/DESIGN.md, Canary releases): off. On,
+# Argo Rollouts replaces the Deployment and a new release gets 10%, then 50% of the front
+# door's traffic, each step judged by Prometheus on the canary's own pods (5xx share, request
+# rate); a bad step aborts it and all traffic stays on the old release. Each release then
+# takes about 6 minutes longer (2 steps of 60 s + 4 x 30 s). Turn it on per environment, in
+# deploy/envs/<env>.yaml: `canary: { enabled: true }`. CI renders it on, so it stays valid.
+canary:
+  enabled: false
+  analysis:
+    # Requests to judge the canary on: a k6 Job sends RATE req/s to `/` through the front
+    # door, with the environment's first hostname, for each analysis step. Change the
+    # routes to the app's, in the mix its users send.
+    syntheticTraffic:
+      script: |
+        import http from "k6/http";
+
+        export const options = {
+          discardResponseBodies: true,
+          scenarios: {
+            hello: {
+              executor: "constant-arrival-rate", rate: Number(__ENV.RATE || 20), timeUnit: "1s",
+              duration: __ENV.DURATION || "180s", preAllocatedVUs: 5, maxVUs: 20,
+            },
+          },
+        };
+
+        export default function () {
+          http.get(`${__ENV.BASE_URL}/`, { headers: { Host: __ENV.HOST } });
+        }

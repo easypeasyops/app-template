@@ -71,7 +71,7 @@ jobs:
   # (scripts/check-platform-lock.sh keeps them equal; Renovate moves them together).
   check:
     needs: scope
-    uses: easypeasyops/platform/.github/workflows/reusable-python-check.yml@09bba2af880d8f2d21ed10bd7bcf62d0784bb30d # platform.lock
+    uses: easypeasyops/platform/.github/workflows/reusable-python-check.yml@cc95ee3c2ea5630a2071fecfec81b849a708aa08 # platform.lock
     with:
       run: ${{ needs.scope.outputs.full == 'true' }}
       working-directory: apps/python-template
@@ -79,7 +79,7 @@ jobs:
 
   image:
     needs: scope
-    uses: easypeasyops/platform/.github/workflows/reusable-image.yml@09bba2af880d8f2d21ed10bd7bcf62d0784bb30d # platform.lock
+    uses: easypeasyops/platform/.github/workflows/reusable-image.yml@cc95ee3c2ea5630a2071fecfec81b849a708aa08 # platform.lock
     with:
       run: ${{ needs.scope.outputs.full == 'true' }}
       context: apps/python-template
@@ -87,14 +87,14 @@ jobs:
 
   java-check:
     needs: scope
-    uses: easypeasyops/platform/.github/workflows/reusable-java-check.yml@09bba2af880d8f2d21ed10bd7bcf62d0784bb30d # platform.lock
+    uses: easypeasyops/platform/.github/workflows/reusable-java-check.yml@cc95ee3c2ea5630a2071fecfec81b849a708aa08 # platform.lock
     with:
       run: ${{ needs.scope.outputs.full == 'true' }}
       working-directory: apps/java-template
 
   java-image:
     needs: scope
-    uses: easypeasyops/platform/.github/workflows/reusable-image.yml@09bba2af880d8f2d21ed10bd7bcf62d0784bb30d # platform.lock
+    uses: easypeasyops/platform/.github/workflows/reusable-image.yml@cc95ee3c2ea5630a2071fecfec81b849a708aa08 # platform.lock
     with:
       run: ${{ needs.scope.outputs.full == 'true' }}
       context: apps/java-template
@@ -102,14 +102,14 @@ jobs:
 
   rust-check:
     needs: scope
-    uses: easypeasyops/platform/.github/workflows/reusable-rust-check.yml@09bba2af880d8f2d21ed10bd7bcf62d0784bb30d # platform.lock
+    uses: easypeasyops/platform/.github/workflows/reusable-rust-check.yml@cc95ee3c2ea5630a2071fecfec81b849a708aa08 # platform.lock
     with:
       run: ${{ needs.scope.outputs.full == 'true' }}
       working-directory: apps/rust-template
 
   rust-image:
     needs: scope
-    uses: easypeasyops/platform/.github/workflows/reusable-image.yml@09bba2af880d8f2d21ed10bd7bcf62d0784bb30d # platform.lock
+    uses: easypeasyops/platform/.github/workflows/reusable-image.yml@cc95ee3c2ea5630a2071fecfec81b849a708aa08 # platform.lock
     with:
       run: ${{ needs.scope.outputs.full == 'true' }}
       context: apps/rust-template
@@ -142,7 +142,7 @@ jobs:
         if: needs.scope.outputs.full == 'true'
         with:
           repository: easypeasyops/platform
-          ref: 09bba2af880d8f2d21ed10bd7bcf62d0784bb30d # platform.lock
+          ref: cc95ee3c2ea5630a2071fecfec81b849a708aa08 # platform.lock
           path: platform
           persist-credentials: false
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
@@ -203,7 +203,7 @@ jobs:
 
   e2e:
     needs: scope
-    uses: easypeasyops/platform/.github/workflows/reusable-kind-e2e.yml@09bba2af880d8f2d21ed10bd7bcf62d0784bb30d # platform.lock
+    uses: easypeasyops/platform/.github/workflows/reusable-kind-e2e.yml@cc95ee3c2ea5630a2071fecfec81b849a708aa08 # platform.lock
     with:
       run: ${{ needs.scope.outputs.e2e == 'true' }}
       app: python-template
@@ -216,7 +216,7 @@ jobs:
 
   java-e2e:
     needs: scope
-    uses: easypeasyops/platform/.github/workflows/reusable-kind-e2e.yml@09bba2af880d8f2d21ed10bd7bcf62d0784bb30d # platform.lock
+    uses: easypeasyops/platform/.github/workflows/reusable-kind-e2e.yml@cc95ee3c2ea5630a2071fecfec81b849a708aa08 # platform.lock
     with:
       run: ${{ needs.scope.outputs.e2e == 'true' }}
       app: java-template
@@ -229,7 +229,7 @@ jobs:
 
   rust-e2e:
     needs: scope
-    uses: easypeasyops/platform/.github/workflows/reusable-kind-e2e.yml@09bba2af880d8f2d21ed10bd7bcf62d0784bb30d # platform.lock
+    uses: easypeasyops/platform/.github/workflows/reusable-kind-e2e.yml@cc95ee3c2ea5630a2071fecfec81b849a708aa08 # platform.lock
     with:
       run: ${{ needs.scope.outputs.e2e == 'true' }}
       app: rust-template

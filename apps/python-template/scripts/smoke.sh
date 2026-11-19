@@ -38,6 +38,21 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -m 10 http://127.0.0.1:8000/readyz
 [[ "$code" == 200 ]] || fail "/readyz returned $code (want 200)"
 pass "/readyz 200"
 
+# A request keeps the X-Request-ID it came with (the front door's), sends it back, and logs
+# it in a JSON line.
+headers=$(curl -s -D - -o /dev/null -H 'X-Request-ID: smoke-1234' http://127.0.0.1:8000/)
+grep -qi '^x-request-id: smoke-1234' <<<"$headers" || fail "X-Request-ID not sent back: $headers"
+pass "X-Request-ID sent back"
+line=""
+for _ in $(seq 1 10); do
+  line=$(docker logs "$NAME" 2>&1 | grep '"request_id": *"smoke-1234"' || true)
+  [[ -n "$line" ]] && break
+  sleep 0.5
+done
+[[ -n "$line" ]] || fail "no log line with request_id smoke-1234"
+jq -e '.msg and .ts and .level' <<<"$line" >/dev/null || fail "not a JSON log line: $line"
+pass "JSON log line with its request_id: $line"
+
 # Metrics on their own port, with the probe counted by route.
 metrics=$(curl -s http://127.0.0.1:9100/metrics) # captured: grep -q would SIGPIPE curl
 grep -q 'http_requests_total{method="GET",route="/readyz",status="200"}' <<<"$metrics" \

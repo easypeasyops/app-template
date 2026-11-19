@@ -5,15 +5,20 @@
 //! * port `METRICS_PORT` (9100): `/metrics` for Prometheus, on a port of its own so the
 //!   public port carries none of it. `http_requests_total` and
 //!   `http_request_duration_seconds` are the names the platform's SLO rules, canary analysis
-//!   and dashboard read.
+//!   and dashboard read;
+//! * logs: JSON lines on stdout (`log`), each request's carrying its ID: the X-Request-ID
+//!   the platform's front door gave it, which the response sends back.
 //!
 //! Replace `hello` with the app; keep the probes and the metrics.
+
+pub mod log;
 
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use axum::extract::{MatchedPath, Request, State};
+use axum::http::HeaderValue;
 use axum::http::header::CONTENT_TYPE;
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
@@ -27,6 +32,18 @@ use prometheus_client::metrics::histogram::Histogram;
 use prometheus_client::registry::Registry;
 use serde_json::{Value, json};
 use tokio::net::TcpListener;
+
+/// The request ID's header: the front door sets it, the response sends it back.
+pub const REQUEST_ID_HEADER: &str = "x-request-id";
+
+/// A caller's request ID is kept only if it's short and plain (`[A-Za-z0-9._-]{1,64}`):
+/// anything else could inject log lines or bloat log storage, so a new one replaces it.
+fn valid_request_id(id: &str) -> bool {
+    (1..=64).contains(&id.len())
+        && id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
+}
 
 /// The buckets Python's prometheus_client uses, so every app's histograms line up. An SLO's
 /// latency threshold must be one of them (deploy/prometheus/slos.yaml).
@@ -90,29 +107,63 @@ async fn readyz() -> &'static str {
     "ok"
 }
 
-/// Counts and times every request, labelled by route, never by raw path: one series per ID
+/// For every request: its ID (the incoming X-Request-ID, else a new one), sent back in the
+/// response's X-Request-ID and on every log line logged while it is served; then one access
+/// log line, and its count and time, labelled by route, never by raw path: one series per ID
 /// or per scanner's guess would grow without bound. A route with a path parameter is
 /// labelled by its pattern (`/items/{id}`), a path no route matches as `unmatched`.
 async fn track(State(metrics): State<Arc<Metrics>>, request: Request, next: Next) -> Response {
+    let request_id = request
+        .headers()
+        .get(REQUEST_ID_HEADER)
+        .and_then(|v| v.to_str().ok())
+        .filter(|id| valid_request_id(id))
+        .map_or_else(|| uuid::Uuid::new_v4().simple().to_string(), str::to_owned);
+    log::REQUEST_ID
+        .scope(request_id.clone(), async move {
+            let mut response = observe(&metrics, request, next).await;
+            let id = HeaderValue::from_str(&request_id).expect("a valid ID is a valid header");
+            response.headers_mut().insert(REQUEST_ID_HEADER, id);
+            response
+        })
+        .await
+}
+
+async fn observe(metrics: &Metrics, request: Request, next: Next) -> Response {
     let start = Instant::now();
     let method = request.method().to_string();
+    let quiet = matches!(request.uri().path(), "/healthz" | "/readyz"); // probes: DEBUG
     let route = request
         .extensions()
         .get::<MatchedPath>()
         .map_or("unmatched", MatchedPath::as_str)
         .to_owned();
     let response = next.run(request).await;
+    let elapsed = start.elapsed().as_secs_f64();
+    let status = response.status().as_u16();
+    let fields = json!({
+        "method": method,
+        "route": route,
+        "status": status,
+        "duration_ms": (elapsed * 100_000.0).round() / 100.0,
+    });
+    let Value::Object(fields) = fields else {
+        unreachable!()
+    };
+    log::log(
+        if quiet { "debug" } else { "info" },
+        "app.access",
+        "request",
+        fields,
+    );
     let labels = DurationLabels { method, route };
-    metrics
-        .duration
-        .get_or_create(&labels)
-        .observe(start.elapsed().as_secs_f64());
+    metrics.duration.get_or_create(&labels).observe(elapsed);
     metrics
         .requests
         .get_or_create(&RequestLabels {
             method: labels.method,
             route: labels.route,
-            status: response.status().as_u16().to_string(),
+            status: status.to_string(),
         })
         .inc();
     response

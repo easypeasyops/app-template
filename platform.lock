@@ -2,4 +2,4 @@
 # workflows are pinned to it (.github/workflows/ci.yml names the same SHA;
 # scripts/check-platform-lock.sh checks they agree). Renovate moves all of them together
 # (.github/renovate.json5).
-easypeasyops/platform@cc95ee3c2ea5630a2071fecfec81b849a708aa08
+easypeasyops/platform@81cc2177cc0e6361f186c798688ce1b6e2480db4
